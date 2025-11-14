@@ -87,7 +87,9 @@ export default function DashboardPage() {
     
     // Optionally add to historical data for real-time chart updates
     setHistoricalData(prev => {
-      const updated = [...prev, data];
+      // Ensure prev is an array before spreading
+      const currentData = Array.isArray(prev) ? prev : [];
+      const updated = [...currentData, data];
       // Keep only data within the current time range
       const cutoffTime = new Date();
       switch (timeRange) {

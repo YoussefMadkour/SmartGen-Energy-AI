@@ -13,15 +13,22 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.tools import tool
+from langgraph.types import RetryPolicy
+from langgraph.checkpoint.memory import MemorySaver
 
 from database import get_session
 from models import TelemetryReading, OptimizationResult, ShutdownWindow, Savings
 
-# Initialize LLM
+# Initialize LLM with retry configuration
 llm = ChatOpenAI(
-    model=os.getenv("OPENAI_MODEL", "gpt-5"),
-    temperature=0.1
+    model=os.getenv("OPENAI_MODEL", "gpt-4"),
+    temperature=0.1,
+    max_retries=3,
+    request_timeout=30
 )
+
+# Add memory for persistence
+memory = MemorySaver()
 
 # Define agent state
 class EnergyOptimizationState(TypedDict):
@@ -166,6 +173,164 @@ def calculate_savings(shutdown_window: Dict[str, Any], fuel_price: float, avg_fu
         "fuel_saved_liters": fuel_saved_per_day
     }
 
+@tool
+def analyze_efficiency_trends(telemetry_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Analyze efficiency trends and patterns from telemetry data.
+    
+    Args:
+        telemetry_data: List of telemetry readings with timestamps, power loads, and fuel consumption
+        
+    Returns:
+        Dictionary containing efficiency trend analysis
+    """
+    if not telemetry_data:
+        return {"error": "No telemetry data provided"}
+    
+    # Calculate efficiency metrics (power generated per fuel unit)
+    efficiency_data = []
+    for reading in telemetry_data:
+        # Simple efficiency calculation: power load / fuel consumption
+        # Higher value means more efficient (more power per fuel unit)
+        if reading["fuel_consumption_lph"] > 0:
+            efficiency = reading["power_load_kw"] / reading["fuel_consumption_lph"]
+            efficiency_data.append({
+                "timestamp": reading["timestamp"],
+                "efficiency": efficiency,
+                "power_load": reading["power_load_kw"],
+                "fuel_consumption": reading["fuel_consumption_lph"]
+            })
+    
+    if not efficiency_data:
+        return {"error": "No valid efficiency data could be calculated"}
+    
+    # Analyze efficiency trends by hour
+    hourly_efficiency = {}
+    for data in efficiency_data:
+        hour = datetime.fromisoformat(data["timestamp"].replace('Z', '+00:00')).hour
+        if hour not in hourly_efficiency:
+            hourly_efficiency[hour] = []
+        hourly_efficiency[hour].append(data["efficiency"])
+    
+    # Calculate average efficiency by hour
+    hourly_avg_efficiency = {
+        hour: statistics.mean(efficiencies) 
+        for hour, efficiencies in hourly_efficiency.items()
+    }
+    
+    # Find most and least efficient hours
+    most_efficient_hours = sorted(
+        hourly_avg_efficiency.items(), 
+        key=lambda x: x[1], 
+        reverse=True
+    )[:3]  # Top 3 most efficient hours
+    
+    least_efficient_hours = sorted(
+        hourly_avg_efficiency.items(), 
+        key=lambda x: x[1]
+    )[:3]  # Top 3 least efficient hours
+    
+    # Calculate overall efficiency trend
+    overall_avg_efficiency = statistics.mean([d["efficiency"] for d in efficiency_data])
+    
+    # Calculate efficiency variance (consistency)
+    efficiency_variance = statistics.variance([d["efficiency"] for d in efficiency_data])
+    
+    return {
+        "overall_avg_efficiency": overall_avg_efficiency,
+        "efficiency_variance": efficiency_variance,
+        "hourly_efficiency": hourly_avg_efficiency,
+        "most_efficient_hours": most_efficient_hours,
+        "least_efficient_hours": least_efficient_hours,
+        "efficiency_stability": "stable" if efficiency_variance < 0.5 else "variable"
+    }
+
+@tool
+def predict_usage_patterns(telemetry_data: List[Dict[str, Any]], forecast_hours: int = 24) -> Dict[str, Any]:
+    """
+    Predict future usage patterns based on historical data.
+    
+    Args:
+        telemetry_data: List of telemetry readings with timestamps and power loads
+        forecast_hours: Number of hours to forecast ahead
+        
+    Returns:
+        Dictionary containing usage pattern predictions
+    """
+    if not telemetry_data or len(telemetry_data) < 48:  # Need at least 2 days of data
+        return {"error": "Insufficient data for prediction (need at least 48 hours)"}
+    
+    # Extract power loads and timestamps
+    power_loads = [reading["power_load_kw"] for reading in telemetry_data]
+    timestamps = [reading["timestamp"] for reading in telemetry_data]
+    
+    # Group by hour and day of week for pattern analysis
+    hourly_patterns = {}
+    dow_patterns = {}  # Day of week patterns
+    
+    for reading in telemetry_data:
+        dt = datetime.fromisoformat(reading["timestamp"].replace('Z', '+00:00'))
+        hour = dt.hour
+        dow = dt.weekday()  # 0=Monday, 6=Sunday
+        
+        if hour not in hourly_patterns:
+            hourly_patterns[hour] = []
+        hourly_patterns[hour].append(reading["power_load_kw"])
+        
+        if dow not in dow_patterns:
+            dow_patterns[dow] = []
+        dow_patterns[dow].append(reading["power_load_kw"])
+    
+    # Calculate average by hour and day of week
+    hourly_avg = {hour: statistics.mean(loads) for hour, loads in hourly_patterns.items()}
+    dow_avg = {dow: statistics.mean(loads) for dow, loads in dow_patterns.items()}
+    
+    # Simple prediction: use weighted average of recent similar time periods
+    # Weight more recent data higher
+    current_time = datetime.fromisoformat(telemetry_data[-1]["timestamp"].replace('Z', '+00:00'))
+    current_hour = current_time.hour
+    current_dow = current_time.weekday()
+    
+    # Get historical average for current hour and day of week
+    base_prediction = hourly_avg.get(current_hour, statistics.mean(power_loads))
+    dow_adjustment = dow_avg.get(current_dow, 0) - statistics.mean(power_loads)
+    
+    # Apply day-of-week adjustment
+    adjusted_prediction = base_prediction + dow_adjustment
+    
+    # Generate hourly predictions for the next forecast_hours
+    predictions = []
+    for i in range(1, forecast_hours + 1):
+        future_hour = (current_hour + i) % 24
+        future_dow = (current_dow + (current_hour + i) // 24) % 7
+        
+        # Base prediction from historical average
+        hour_prediction = hourly_avg.get(future_hour, statistics.mean(power_loads))
+        
+        # Apply day-of-week adjustment if we cross to a new day
+        if i > 24 - current_hour:  # If we're predicting for next day
+            dow_adj = dow_avg.get(future_dow, 0) - statistics.mean(power_loads)
+            hour_prediction += dow_adj
+        
+        # Add some randomness for realism (±5%)
+        import random
+        variation = random.uniform(0.95, 1.05)
+        final_prediction = hour_prediction * variation
+        
+        predictions.append({
+            "hour_offset": i,
+            "predicted_power": final_prediction,
+            "confidence": "high" if i <= 6 else "medium"  # Higher confidence for near-term
+        })
+    
+    return {
+        "current_hour": current_hour,
+        "current_dow": current_dow,
+        "hourly_patterns": hourly_avg,
+        "dow_patterns": dow_avg,
+        "predictions": predictions
+    }
+
 # Define agent nodes
 def analyze_data(state: EnergyOptimizationState):
     """Analyze telemetry data to identify patterns."""
@@ -180,26 +345,36 @@ def analyze_data(state: EnergyOptimizationState):
         for reading in state["telemetry_data"]
     ]
     
-    # Use the analyze_usage_patterns tool
-    analysis = analyze_usage_patterns(telemetry_dicts)
+    # Use analyze_usage_patterns tool
+    usage_analysis = analyze_usage_patterns(telemetry_dicts)
+    
+    # Use analyze_efficiency_trends tool
+    efficiency_analysis = analyze_efficiency_trends(telemetry_dicts)
+    
+    # Use predict_usage_patterns tool for future predictions
+    prediction_analysis = predict_usage_patterns(telemetry_dicts)
     
     return {
         **state,
-        "analysis_results": analysis
+        "analysis_results": {
+            "usage_patterns": usage_analysis,
+            "efficiency_trends": efficiency_analysis,
+            "predictions": prediction_analysis
+        }
     }
 
 def generate_recommendations(state: EnergyOptimizationState):
     """Generate optimization recommendations based on analysis."""
     analysis = state["analysis_results"]
     
-    if "error" in analysis:
+    if "usage_patterns" not in analysis or "error" in analysis["usage_patterns"]:
         return {
             **state,
             "optimization_result": None
         }
     
     # Calculate optimal shutdown window
-    shutdown_window = calculate_optimal_shutdown(analysis)
+    shutdown_window = calculate_optimal_shutdown(analysis["usage_patterns"])
     
     if "error" in shutdown_window:
         return {
@@ -219,20 +394,42 @@ def generate_recommendations(state: EnergyOptimizationState):
         avg_fuel_consumption
     )
     
-    # Generate natural language recommendation
+    # Generate natural language recommendation with efficiency and prediction insights
+    efficiency_trends = analysis.get("efficiency_trends", {})
+    predictions = analysis.get("predictions", {})
+    
+    # Extract key prediction insights
+    next_24h_predictions = predictions.get("predictions", [])[:24]
+    avg_predicted_load = statistics.mean([p["predicted_power"] for p in next_24h_predictions]) if next_24h_predictions else 0
+    
     recommendation_prompt = f"""
-    Based on the generator usage analysis:
-    - Average power consumption: {analysis['avg_power']:.2f} kW
-    - Lowest usage hours: {analysis['lowest_usage_hours']}
+    Based on generator usage analysis:
+    - Average power consumption: {analysis['usage_patterns']['avg_power']:.2f} kW
+    - Lowest usage hours: {analysis['usage_patterns']['lowest_usage_hours']}
     - Recommended shutdown window: {shutdown_window['start_time'].strftime('%H:%M')} to {shutdown_window['end_time'].strftime('%H:%M')} ({shutdown_window['duration_hours']} hours)
     - Daily savings: ${savings_data['daily_savings_usd']:.2f}
     - Monthly savings: ${savings_data['monthly_savings_usd']:.2f}
     
-    Provide a concise recommendation for the operator explaining the benefits of this shutdown window.
+    Efficiency Analysis:
+    - Overall efficiency: {efficiency_trends.get('overall_avg_efficiency', 0):.2f} kW per liter
+    - Efficiency stability: {efficiency_trends.get('efficiency_stability', 'unknown')}
+    - Most efficient hours: {[h for h, _ in efficiency_trends.get('most_efficient_hours', [])]}
+    - Least efficient hours: {[h for h, _ in efficiency_trends.get('least_efficient_hours', [])]}
+    
+    Predictive Analysis:
+    - Predicted average load (next 24h): {avg_predicted_load:.2f} kW
+    - High confidence predictions: {[p['hour_offset'] for p in next_24h_predictions if p.get('confidence') == 'high']}
+    - Peak predicted hours: {sorted([(p['hour_offset'], p['predicted_power']) for p in next_24h_predictions], key=lambda x: x[1], reverse=True)[:3]}
+    
+    Provide a comprehensive recommendation for the operator explaining:
+    1. Benefits of the recommended shutdown window
+    2. Efficiency patterns and how to optimize them
+    3. Specific actions to improve fuel efficiency
+    4. How to prepare for predicted high-load periods
     """
     
     messages = [
-        SystemMessage(content="You are an expert energy optimization advisor for industrial generators. Provide clear, actionable recommendations."),
+        SystemMessage(content="You are an expert energy optimization advisor for industrial generators. Provide clear, actionable recommendations with specific efficiency and predictive insights."),
         HumanMessage(content=recommendation_prompt)
     ]
     
@@ -258,7 +455,7 @@ def generate_recommendations(state: EnergyOptimizationState):
         "optimization_result": optimization_result
     }
 
-# Build the agent graph
+# Build agent graph
 def create_energy_optimization_agent():
     """Create and compile the energy optimization agent."""
     workflow = StateGraph(EnergyOptimizationState)
@@ -272,18 +469,24 @@ def create_energy_optimization_agent():
     workflow.add_edge("analyze_data", "generate_recommendations")
     workflow.add_edge("generate_recommendations", END)
     
-    return workflow.compile()
+    # Compile with memory but without retry_policy for compatibility
+    return workflow.compile(
+        checkpointer=memory,
+        interrupt_before=[],  # No interrupts needed for this use case
+        interrupt_after=[]
+    )
 
 # Initialize the agent
 energy_agent = create_energy_optimization_agent()
 
-async def run_optimization_analysis(telemetry_data: List[TelemetryReading], fuel_price: float = 1.50) -> Optional[OptimizationResult]:
+async def run_optimization_analysis(telemetry_data: List[TelemetryReading], fuel_price: float = 1.50, thread_id: str = None) -> Optional[OptimizationResult]:
     """
-    Run the energy optimization analysis on telemetry data.
+    Run energy optimization analysis on telemetry data.
     
     Args:
         telemetry_data: List of telemetry readings to analyze
         fuel_price: Price of fuel per liter (default from environment)
+        thread_id: Optional thread ID for conversation persistence
         
     Returns:
         OptimizationResult: Complete optimization recommendation or None if analysis fails
@@ -292,13 +495,19 @@ async def run_optimization_analysis(telemetry_data: List[TelemetryReading], fuel
         return None
     
     try:
+        # Create a unique thread ID if not provided
+        if thread_id is None:
+            thread_id = f"optimization_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
         agent_input = {
             "telemetry_data": telemetry_data,
             "fuel_price": fuel_price,
-            "messages": [SystemMessage(content="Analyze the generator telemetry data and provide optimization recommendations.")]
+            "messages": [SystemMessage(content="Analyze generator telemetry data and provide optimization recommendations.")]
         }
         
-        result = await energy_agent.ainvoke(agent_input)
+        # Use thread_id for persistence
+        config = {"configurable": {"thread_id": thread_id}}
+        result = await energy_agent.ainvoke(agent_input, config=config)
         return result.get("optimization_result")
     except Exception as e:
         print(f"Error running optimization analysis: {e}")

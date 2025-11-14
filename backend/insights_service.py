@@ -49,16 +49,6 @@ class OptimizationRequest(BaseModel):
         return v
 
 
-class OptimizationResponse(BaseModel):
-    """Response model for optimization recommendations."""
-    shutdown_window: ShutdownWindow
-    duration_hours: float
-    daily_savings_usd: float
-    monthly_savings_usd: float
-    fuel_saved_liters: float
-    recommendation: str
-
-
 class ROICard(BaseModel):
     """ROI card data for dashboard display."""
     shutdown_window: ShutdownWindow
@@ -211,11 +201,11 @@ def estimate_savings(
 
 
 # REST Endpoints
-@router.post("/optimize", response_model=OptimizationResponse)
+@router.post("/optimize", response_model=OptimizationResult)
 async def optimize_generator_performance(
     request: OptimizationRequest,
     session: Session = Depends(get_db_session)
-) -> OptimizationResponse:
+) -> OptimizationResult:
     """
     Analyze historical telemetry data and generate optimization recommendations.
     
@@ -228,7 +218,7 @@ async def optimize_generator_performance(
         session: Database session
         
     Returns:
-        OptimizationResponse: Complete optimization recommendation
+        OptimizationResult: Complete optimization recommendation
         
     Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
     """
@@ -276,14 +266,8 @@ async def optimize_generator_performance(
                 detail="Failed to generate optimization recommendations"
             )
         
-        return OptimizationResponse(
-            shutdown_window=optimization_result.shutdown_window,
-            duration_hours=optimization_result.shutdown_window.duration_hours,
-            daily_savings_usd=optimization_result.savings.daily_savings_usd,
-            monthly_savings_usd=optimization_result.savings.monthly_savings_usd,
-            fuel_saved_liters=optimization_result.savings.fuel_saved_liters,
-            recommendation=optimization_result.recommendation
-        )
+        # Return the optimization result directly (already has correct structure)
+        return optimization_result
         
     except HTTPException:
         raise

@@ -295,8 +295,11 @@ async def optimize_generator_performance(
         # Get fuel price from environment
         fuel_price = float(os.getenv("DIESEL_PRICE_PER_LITER", "1.50"))
         
-        # Run agent analysis
-        optimization_result = await run_optimization_analysis(telemetry_data, fuel_price)
+        # Create a unique thread ID for this optimization
+        thread_id = f"optimization_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Run agent analysis with thread_id for persistence
+        optimization_result = await run_optimization_analysis(telemetry_data, fuel_price, thread_id)
         
         if optimization_result is None:
             raise HTTPException(
