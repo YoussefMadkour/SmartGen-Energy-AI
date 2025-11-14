@@ -11,6 +11,7 @@ import os
 
 from database import init_database
 from iot_simulator import seed_historical_data, start_simulator
+from metrics_service import router as metrics_router
 
 
 # CORS configuration
@@ -74,3 +75,7 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+# Register service routers
+app.include_router(metrics_router)
