@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  database:
+    image: alpine:latest
+    container_name: energy-dashboard-db
+    volumes:
+      - sqlite-data:/data
+    command: tail -f /dev/null
+    networks:
+      - energy-dashboard-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: energy-dashboard-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:////data/telemetry.db
+      - SIMULATION_INTERVAL_SECONDS=${SIMULATION_INTERVAL_SECONDS:-2}
+      - MIN_POWER_LOAD_KW=${MIN_POWER_LOAD_KW:-50}
+      - MAX_POWER_LOAD_KW=${MAX_POWER_LOAD_KW:-300}
+      - FUEL_EFFICIENCY_FACTOR=${FUEL_EFFICIENCY_FACTOR:-0.3}
+      - DIESEL_PRICE_PER_LITER=${DIESEL_PRICE_PER_LITER:-1.50}
+      - MIN_SHUTDOWN_HOURS=${MIN_SHUTDOWN_HOURS:-2}
+      - MAX_SHUTDOWN_HOURS=${MAX_SHUTDOWN_HOURS:-8}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+    volumes:
+      - sqlite-data:/data
+      - ./backend:/app
+    depends_on:
+      - database
+    networks:
+      - energy-dashboard-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: energy-dashboard-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://localhost:8000}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    networks:
+      - energy-dashboard-network
+
+volumes:
+  sqlite-data:
+    driver: local
+
+networks:
+  energy-dashboard-network:
+    driver: bridge

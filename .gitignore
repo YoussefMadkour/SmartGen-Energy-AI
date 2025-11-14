@@ -1,35 +1,38 @@
+# Environment variables
+.env
+backend/.env
+frontend/.env
+frontend/.env.local
+
 # Python
-venv/
-env/
-ENV/
-*.pyc
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
+venv/
+env/
+ENV/
 *.egg-info/
-.installed.cfg
-*.egg
+dist/
+build/
 
-# Environment variables
-.env
-.env.local
-.env.*.local
+# Node
+node_modules/
+.next/
+out/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# IDEs
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -40,32 +43,7 @@ wheels/
 .DS_Store
 Thumbs.db
 
-# Node.js (for frontend)
-node_modules/
-.next/
-out/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
 # Docker
 *.log
 
-# Kiro specs documentation
-.kiro/specs/
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-*.cover
-.hypothesis/
-
-# Logs
-logs/
-*.log
+.kiro
