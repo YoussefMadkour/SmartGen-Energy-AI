@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { OptimizationPanel } from '../components/OptimizationPanel';
+import { ROICard } from '../components/ROICard';  // Import ROI card
 
 interface TelemetryReading {
   id: number;
@@ -124,9 +125,10 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
         
-        {/* AI Optimization Panel */}
-        <div className="mt-6">
+        {/* AI Optimization Components */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <OptimizationPanel />
+          <ROICard />
         </div>
       </div>
     </div>

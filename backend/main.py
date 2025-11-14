@@ -12,8 +12,9 @@ import os
 from database import init_database
 from iot_simulator import seed_historical_data, start_simulator
 from metrics_service import router as metrics_router
+from insights_service import router as insights_router  # Import insights service
 from websocket_service import websocket_endpoint, get_connection_manager
-from agent_service import energy_agent  # Import the agent service
+from agent_service import energy_agent  # Import agent service
 
 
 # CORS configuration
@@ -73,7 +74,7 @@ async def root():
         "status": "online",
         "service": "Energy Optimization ROI Dashboard API",
         "version": "1.0.0",
-        "features": ["telemetry_monitoring", "ai_optimization"]
+        "features": ["telemetry_monitoring", "ai_optimization", "insights_service"]
     }
 
 
@@ -85,6 +86,7 @@ async def health_check():
 
 # Register service routers
 app.include_router(metrics_router)
+app.include_router(insights_router)  # Include insights service
 
 
 # WebSocket endpoint for real-time telemetry streaming
