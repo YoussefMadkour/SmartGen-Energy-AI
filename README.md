@@ -4,10 +4,11 @@ An AI-powered operational tool for monitoring generator performance at remote oi
 
 ## Architecture
 
-- **Backend**: FastAPI (Python 3.11) with LangChain AI agent
+- **Backend**: FastAPI (Python 3.11) with LangGraph AI agent
 - **Frontend**: Next.js 14+ with React and TypeScript
 - **Database**: SQLite with Docker volume persistence
 - **Real-time**: WebSocket for live telemetry streaming
+- **AI Agent**: Custom LangGraph agent for optimization analysis
 
 ## Prerequisites
 
@@ -18,7 +19,7 @@ An AI-powered operational tool for monitoring generator performance at remote oi
 ## Quick Start
 
 1. Clone the repository
-2. Copy the environment file and configure:
+2. Copy environment file and configure:
    ```bash
    cp .env.example .env
    ```
@@ -35,15 +36,26 @@ An AI-powered operational tool for monitoring generator performance at remote oi
 ```
 .
 ├── backend/              # FastAPI backend application
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   └── .env.example
+│   ├── agent_service.py    # LangGraph AI agent implementation
+│   ├── metrics_service.py  # REST API endpoints
+│   ├── models.py          # Data models
+│   ├── database.py         # Database configuration
+│   ├── iot_simulator.py    # IoT data simulation
+│   ├── websocket_service.py # WebSocket handling
+│   ├── main.py            # Application entry point
+│   ├── requirements.txt     # Python dependencies
+│   └── Dockerfile
 ├── frontend/             # Next.js frontend application
-│   ├── Dockerfile
-│   ├── package.json
-│   └── .env.example
+│   ├── components/         # React components
+│   │   └── OptimizationPanel.tsx  # AI recommendations display
+│   ├── pages/             # Next.js pages
+│   │   └── index.tsx      # Main dashboard
+│   ├── next.config.js      # Next.js configuration
+│   ├── package.json        # Node.js dependencies
+│   └── Dockerfile
 ├── docker-compose.yml    # Docker orchestration
-└── .env.example          # Root environment configuration
+├── .env.example          # Environment configuration template
+└── AGENT_ARCHITECTURE.md # AI agent documentation
 ```
 
 ## Environment Variables
@@ -64,9 +76,38 @@ The Docker setup includes hot-reload for both backend and frontend:
 
 - Real-time generator telemetry monitoring
 - Historical data visualization with interactive charts
-- AI-powered optimization recommendations
+- **AI-powered optimization recommendations** using LangGraph agent
+- **Usage pattern analysis** with hourly breakdown
+- **Optimal shutdown window calculation** with sliding window algorithm
+- **Cost savings estimation** with daily and monthly projections
+- **Natural language recommendations** from OpenAI GPT-4
 - ROI calculations with projected savings
 - WebSocket-based live updates
+
+## AI Agent Implementation
+
+The system uses a custom LangGraph agent with three specialized tools:
+
+1. **Usage Pattern Analysis**: Analyzes historical telemetry data to identify consumption patterns
+2. **Shutdown Window Calculation**: Implements sliding window algorithm to find optimal shutdown periods
+3. **Savings Estimation**: Calculates projected cost savings based on fuel consumption
+
+The agent follows a sequential workflow:
+1. Analyze telemetry data to identify patterns
+2. Calculate optimal shutdown windows based on low-usage periods
+3. Generate natural language recommendations with cost savings projections
+
+For detailed implementation information, see [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md).
+
+## API Endpoints
+
+### Metrics
+- `GET /api/metrics/history` - Retrieve historical telemetry data
+- `GET /api/metrics/latest` - Get latest telemetry reading
+- `POST /api/metrics/optimize` - Generate AI optimization recommendations
+
+### WebSocket
+- `WS /ws/telemetry` - Real-time telemetry streaming
 
 ## License
 
