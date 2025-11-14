@@ -1,160 +1,154 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-
-interface ROIData {
-  shutdown_window: {
-    start: string;
-    end: string;
-    duration_hours: number;
-  };
-  savings: {
-    daily_savings_usd: number;
-    monthly_savings_usd: number;
-    fuel_saved_liters: number;
-  };
-  recommendation: string;
-  analysis_period_hours: number;
-  last_updated: string;
-}
+import React from 'react';
+import { OptimizationResult } from '@/types';
 
 interface ROICardProps {
-  analysisHours?: number;
+  optimization: OptimizationResult;
+  onDismiss?: () => void;
 }
 
-export const ROICard: React.FC<ROICardProps> = ({ analysisHours = 24 }) => {
-  const [roiData, setRoiData] = useState<ROIData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  const fetchROIData = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await axios.get(`/api/insights/roi?hours=${analysisHours}`);
-      setRoiData(response.data);
-    } catch (err: any) {
-      console.error('Failed to fetch ROI data:', err);
-      setError(err.response?.data?.detail || 'Failed to fetch optimization insights');
-    } finally {
-      setLoading(false);
-    }
+/**
+ * ROI Card Component
+ * Displays optimization recommendations with shutdown window, savings projections, and AI recommendation
+ */
+export const ROICard: React.FC<ROICardProps> = ({ optimization, onDismiss }) => {
+  // Format date and time for display
+  const formatDateTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
-  
-  React.useEffect(() => {
-    fetchROIData();
-    // Set up periodic refresh (every 30 minutes)
-    const interval = setInterval(fetchROIData, 1800000);
-    return () => clearInterval(interval);
-  }, [analysisHours]);
-  
-  if (loading && !roiData) {
-    return (
-      <div className="p-6 bg-white rounded-lg shadow-md">
-        <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className="ml-3 text-gray-600">Analyzing optimization opportunities...</span>
-        </div>
-      </div>
-    );
-  }
-  
-  if (error) {
-    return (
-      <div className="p-6 bg-white rounded-lg shadow-md">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          <strong>Error:</strong> {error}
-        </div>
-        <button 
-          onClick={fetchROIData}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-  
-  if (!roiData) {
-    return (
-      <div className="p-6 bg-white rounded-lg shadow-md">
-        <div className="text-gray-500">No ROI data available</div>
-      </div>
-    );
-  }
-  
+
+  // Format time only for display
+  const formatTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const { shutdown_window, savings, recommendation } = optimization;
+
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-800">Optimization Insights</h2>
-        <div className="text-sm text-gray-500">
-          Analysis Period: {roiData.analysis_period_hours} hours | 
-          Last Updated: {new Date(roiData.last_updated).toLocaleString()}
+    <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold text-white">Optimization Recommendation</h2>
+          {onDismiss && (
+            <button
+              onClick={onDismiss}
+              className="text-white hover:text-gray-200 transition-colors"
+              aria-label="Dismiss"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h3 className="text-lg font-semibold mb-3 text-blue-800">Recommended Shutdown Window</h3>
-          <div className="space-y-2">
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">Start:</span> {' '}
-              {new Date(roiData.shutdown_window.start).toLocaleString()}
-            </p>
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">End:</span> {' '}
-              {new Date(roiData.shutdown_window.end).toLocaleString()}
-            </p>
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">Duration:</span> {' '}
-              {roiData.shutdown_window.duration_hours} hours
-            </p>
+
+      <div className="p-6">
+        {/* Shutdown Window Section */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
+            Recommended Shutdown Window
+          </h3>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex-1">
+                <p className="text-xs text-gray-600 mb-1">Start Time</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {formatDateTime(shutdown_window.start)}
+                </p>
+              </div>
+              <div className="px-4">
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </div>
+              <div className="flex-1 text-right">
+                <p className="text-xs text-gray-600 mb-1">End Time</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {formatDateTime(shutdown_window.end)}
+                </p>
+              </div>
+            </div>
+            
+            {/* Duration Badge */}
+            <div className="flex justify-center">
+              <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {shutdown_window.duration_hours} {shutdown_window.duration_hours === 1 ? 'hour' : 'hours'}
+              </span>
+            </div>
           </div>
         </div>
-        
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-          <h3 className="text-lg font-semibold mb-3 text-green-800">Projected Savings</h3>
-          <div className="space-y-2">
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">Daily:</span> {' '}
-              <span className="text-green-600 font-bold">
-                ${roiData.savings.daily_savings_usd.toFixed(2)}
-              </span>
-            </p>
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">Monthly:</span> {' '}
-              <span className="text-green-600 font-bold">
-                ${roiData.savings.monthly_savings_usd.toFixed(2)}
-              </span>
-            </p>
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">Fuel Saved:</span> {' '}
-              <span className="text-green-600 font-bold">
-                {roiData.savings.fuel_saved_liters.toFixed(2)} liters
-              </span>
-            </p>
+
+        {/* Savings Section */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
+            Projected Savings
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Daily Savings - Prominent Display */}
+            <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-gray-700">Daily Savings</span>
+              </div>
+              <p className="text-3xl font-bold text-green-600">
+                ${savings.daily_savings_usd.toFixed(2)}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                {savings.fuel_saved_liters.toFixed(1)} liters saved
+              </p>
+            </div>
+
+            {/* Monthly Projection */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-sm font-medium text-gray-700">Monthly Projection</span>
+              </div>
+              <p className="text-3xl font-bold text-green-600">
+                ${savings.monthly_savings_usd.toFixed(2)}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                Based on 30-day period
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-3 text-gray-800">AI Recommendation</h3>
-        <p className="text-sm text-gray-700 leading-relaxed">
-          {roiData.recommendation}
-        </p>
-      </div>
-      
-      <div className="mt-6 flex justify-between items-center">
-        <button 
-          onClick={fetchROIData}
-          disabled={loading}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300 transition-colors"
-        >
-          {loading ? 'Analyzing...' : 'Refresh Analysis'}
-        </button>
-        
-        <div className="text-xs text-gray-500">
-          Analysis based on last {roiData.analysis_period_hours} hours of data
+
+        {/* AI Recommendation Section */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">AI Recommendation</h3>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {recommendation}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
