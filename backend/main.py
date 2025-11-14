@@ -8,13 +8,16 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from database import init_database
 from iot_simulator import seed_historical_data, start_simulator
 from metrics_service import router as metrics_router
-from insights_service import router as insights_router  # Import insights service
+from insights_service import router as insights_router
 from websocket_service import websocket_endpoint, get_connection_manager
-from agent_service import energy_agent  # Import agent service
 
 
 # CORS configuration
