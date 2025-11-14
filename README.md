@@ -18,97 +18,183 @@ An AI-powered operational tool for monitoring generator performance at remote oi
 
 ## Quick Start
 
-1. Clone the repository
-2. Copy environment file and configure:
-   ```bash
-   cp .env.example .env
-   ```
-3. Edit `.env` and add your OpenAI API key
-4. Start the application:
-   ```bash
-   docker-compose up --build
-   ```
-5. Access the dashboard at http://localhost:3000
-6. API documentation available at http://localhost:8000/docs
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/your-username/oil-rig-energy-optimization.git
+cd oil-rig-energy-optimization
+```
+
+### 2. Environment Configuration
+
+Copy the environment file and configure your settings:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your OpenAI API key:
+
+```env
+# Database Configuration
+DATABASE_URL=sqlite:///data/telemetry.db
+
+# OpenAI Configuration
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-5
+
+# Application Configuration
+DIESEL_PRICE_PER_LITER=1.50
+```
+
+### 3. Start Application
+
+```bash
+docker-compose up --build
+```
+
+This will build and start all services (backend, frontend, database).
+
+### 4. Access the Application
+
+Once running, access the application at:
+
+- **Frontend Dashboard**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
 
 ## Project Structure
 
 ```
-.
-├── backend/              # FastAPI backend application
-│   ├── agent_service.py    # LangGraph AI agent implementation
-│   ├── metrics_service.py  # REST API endpoints
-│   ├── models.py          # Data models
-│   ├── database.py         # Database configuration
-│   ├── iot_simulator.py    # IoT data simulation
-│   ├── websocket_service.py # WebSocket handling
-│   ├── main.py            # Application entry point
-│   ├── requirements.txt     # Python dependencies
+oil-rig-energy-optimization/
+├── backend/                    # FastAPI backend application
+│   ├── agent_service.py         # LangGraph AI agent implementation
+│   ├── metrics_service.py       # REST API endpoints
+│   ├── models.py             # Data models
+│   ├── database.py          # Database configuration
+│   ├── iot_simulator.py      # IoT data simulation
+│   ├── websocket_service.py   # WebSocket handling
+│   ├── main.py             # Application entry point
+│   ├── requirements.txt        # Python dependencies
 │   └── Dockerfile
-├── frontend/             # Next.js frontend application
-│   ├── components/         # React components
-│   │   └── OptimizationPanel.tsx  # AI recommendations display
-│   ├── pages/             # Next.js pages
-│   │   └── index.tsx      # Main dashboard
-│   ├── next.config.js      # Next.js configuration
-│   ├── package.json        # Node.js dependencies
-│   └── Dockerfile
-├── docker-compose.yml    # Docker orchestration
-├── .env.example          # Environment configuration template
-└── AGENT_ARCHITECTURE.md # AI agent documentation
+├── frontend/                   # Next.js frontend application
+│   ├── components/           # React components
+│   │   ├── OptimizationPanel.tsx  # AI recommendations display
+│   │   ├── PowerLoadChart.tsx    # Power load visualization
+│   │   ├── FuelConsumptionChart.tsx # Fuel consumption visualization
+│   │   └── ROICard.tsx          # ROI calculations
+│   ├── pages/               # Next.js pages
+│   │   └── index.tsx         # Main dashboard
+│   ├── lib/                 # Utility libraries
+│   │   ├── api-client.ts       # API client
+│   │   └── websocket-client.ts # WebSocket client
+│   ├── types/               # TypeScript type definitions
+│   ├── next.config.js       # Next.js configuration
+│   ├── package.json         # Node.js dependencies
+│   ├── tsconfig.json        # TypeScript configuration
+│   ├── Dockerfile
+│   └── .env.local
+├── docker-compose.yml           # Docker orchestration
+├── .env.example               # Environment configuration template
+├── .gitignore                 # Git ignore rules
+├── AGENT_ARCHITECTURE.md    # AI agent documentation
+├── AGENT_IMPROVEMENTS.md     # Agent enhancement documentation
+└── README.md                   # This file
 ```
-
-## Environment Variables
-
-See `.env.example` for all available configuration options including:
-- Database settings
-- IoT simulation parameters
-- Optimization parameters
-- OpenAI API configuration
-
-## Development
-
-The Docker setup includes hot-reload for both backend and frontend:
-- Backend changes are automatically reloaded by uvicorn
-- Frontend changes trigger Next.js fast refresh
 
 ## Features
 
-- Real-time generator telemetry monitoring
+### 🚀 Real-time Monitoring
+- Live telemetry data streaming via WebSocket
+- Current generator status and metrics
 - Historical data visualization with interactive charts
-- **AI-powered optimization recommendations** using LangGraph agent
-- **Usage pattern analysis** with hourly breakdown
-- **Optimal shutdown window calculation** with sliding window algorithm
-- **Cost savings estimation** with daily and monthly projections
-- **Natural language recommendations** from OpenAI GPT-4
-- ROI calculations with projected savings
-- WebSocket-based live updates
+- Automatic data refresh every 5 seconds
 
-## AI Agent Implementation
+### 🤖 AI-Powered Optimization
+- Custom LangGraph agent analyzes usage patterns
+- Identifies optimal shutdown windows for cost savings
+- Provides natural language recommendations
+- Calculates projected ROI and cost savings
 
-The system uses a custom LangGraph agent with three specialized tools:
+### 📊 Data Visualization
+- Interactive power load charts with time range selection
+- Fuel consumption trends analysis
+- Efficiency metrics and performance indicators
+- Historical data export capabilities
 
-1. **Usage Pattern Analysis**: Analyzes historical telemetry data to identify consumption patterns
-2. **Shutdown Window Calculation**: Implements sliding window algorithm to find optimal shutdown periods
-3. **Savings Estimation**: Calculates projected cost savings based on fuel consumption
+### 🔧 Technical Implementation
 
-The agent follows a sequential workflow:
-1. Analyze telemetry data to identify patterns
-2. Calculate optimal shutdown windows based on low-usage periods
-3. Generate natural language recommendations with cost savings projections
-
-For detailed implementation information, see [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md).
+- **Backend**: FastAPI with async/await patterns
+- **Frontend**: React with TypeScript for type safety
+- **Database**: SQLite with proper indexing for time-series data
+- **Real-time Communication**: WebSocket for live updates
+- **AI Integration**: LangGraph with OpenAI GPT-5 for intelligent analysis
 
 ## API Endpoints
 
-### Metrics
+### Metrics API
 - `GET /api/metrics/history` - Retrieve historical telemetry data
 - `GET /api/metrics/latest` - Get latest telemetry reading
 - `POST /api/metrics/optimize` - Generate AI optimization recommendations
 
-### WebSocket
+### WebSocket Endpoint
 - `WS /ws/telemetry` - Real-time telemetry streaming
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | SQLite database path | `sqlite:///data/telemetry.db` |
+| `OPENAI_API_KEY` | OpenAI API key | Required for AI features |
+| `OPENAI_MODEL` | OpenAI model | `gpt-5` |
+| `DIESEL_PRICE_PER_LITER` | Fuel cost per liter | `1.50` |
+
+## Development
+
+### Local Development
+
+```bash
+# Backend development
+cd backend
+python -m venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+# Frontend development
+cd frontend
+npm install
+npm run dev
+```
+
+### Production Deployment
+
+```bash
+# Production deployment
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+## Getting Started
+
+1. **Clone the repository**
+2. **Configure your environment** (add OpenAI API key)
+3. **Run `docker-compose up --build`**
+4. **Access the dashboard** at http://localhost:3000
+5. **Explore the API** at http://localhost:8000/docs
+
+## Support
+
+For issues, questions, or contributions:
+- 📧 Create an issue in the GitHub repository
+- 📧 Check the [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md) for technical details
+- 💬 Review the [AGENT_IMPROVEMENTS.md](AGENT_IMPROVEMENTS.md) for enhancement history
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+**Ready to optimize your generator operations! 🚀**
