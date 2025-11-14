@@ -1,7 +1,7 @@
 """
 FastAPI application for Energy Optimization ROI Dashboard.
 
-This is the main entry point for the backend API.
+This is main entry point for the backend API.
 """
 
 from fastapi import FastAPI, WebSocket
@@ -13,6 +13,7 @@ from database import init_database
 from iot_simulator import seed_historical_data, start_simulator
 from metrics_service import router as metrics_router
 from websocket_service import websocket_endpoint, get_connection_manager
+from agent_service import energy_agent  # Import the agent service
 
 
 # CORS configuration
@@ -71,7 +72,8 @@ async def root():
     return {
         "status": "online",
         "service": "Energy Optimization ROI Dashboard API",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "features": ["telemetry_monitoring", "ai_optimization"]
     }
 
 
