@@ -19,7 +19,7 @@ from models import TelemetryReading, OptimizationResult, ShutdownWindow, Savings
 
 # Initialize LLM
 llm = ChatOpenAI(
-    model=os.getenv("OPENAI_MODEL", "gpt-4"),
+    model=os.getenv("OPENAI_MODEL", "gpt-5"),
     temperature=0.1
 )
 
