@@ -203,7 +203,7 @@ def estimate_savings(
 # REST Endpoints
 @router.post("/optimize", response_model=OptimizationResult)
 async def optimize_generator_performance(
-    request: OptimizationRequest,
+    hours: int = Query(24, description="Hours of historical data to analyze"),
     session: Session = Depends(get_db_session)
 ) -> OptimizationResult:
     """
@@ -224,7 +224,7 @@ async def optimize_generator_performance(
     """
     try:
         # Get historical data using deterministic tool
-        usage_data = get_usage_profile(session, request.analysis_hours)
+        usage_data = get_usage_profile(session, hours)
         
         if not usage_data:
             raise HTTPException(
@@ -235,8 +235,8 @@ async def optimize_generator_performance(
         # Compute optimal shutdown window using deterministic tool
         shutdown_window = compute_shutdown_window(
             usage_data, 
-            request.min_shutdown_hours, 
-            request.max_shutdown_hours
+            2,  # min_shutdown_hours
+            8   # max_shutdown_hours
         )
         
         if "error" in shutdown_window:

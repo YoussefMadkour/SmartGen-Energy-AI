@@ -151,30 +151,6 @@ oil-rig-energy-optimization/
 | `OPENAI_MODEL` | OpenAI model | `gpt-5` |
 | `DIESEL_PRICE_PER_LITER` | Fuel cost per liter | `1.50` |
 
-## Development
-
-### Local Development
-
-```bash
-# Backend development
-cd backend
-python -m venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload
-
-# Frontend development
-cd frontend
-npm install
-npm run dev
-```
-
-### Production Deployment
-
-```bash
-# Production deployment
-docker-compose -f docker-compose.prod.yml up -d
-```
 
 ## Getting Started
 

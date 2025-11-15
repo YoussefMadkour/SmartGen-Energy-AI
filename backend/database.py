@@ -9,8 +9,9 @@ This module handles:
 
 import os
 from pathlib import Path
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel, create_engine, Session, StaticPool
 from sqlalchemy.pool import StaticPool
+from sqlalchemy import create_engine
 
 
 # Get database URL from environment variable with fallback

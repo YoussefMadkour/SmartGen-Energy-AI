@@ -345,14 +345,14 @@ def analyze_data(state: EnergyOptimizationState):
         for reading in state["telemetry_data"]
     ]
     
-    # Use analyze_usage_patterns tool
-    usage_analysis = analyze_usage_patterns(telemetry_dicts)
+    # Use analyze_usage_patterns tool - invoke it properly
+    usage_analysis = analyze_usage_patterns.invoke({"telemetry_data": telemetry_dicts})
     
-    # Use analyze_efficiency_trends tool
-    efficiency_analysis = analyze_efficiency_trends(telemetry_dicts)
+    # Use analyze_efficiency_trends tool - invoke it properly
+    efficiency_analysis = analyze_efficiency_trends.invoke({"telemetry_data": telemetry_dicts})
     
-    # Use predict_usage_patterns tool for future predictions
-    prediction_analysis = predict_usage_patterns(telemetry_dicts)
+    # Use predict_usage_patterns tool for future predictions - invoke it properly
+    prediction_analysis = predict_usage_patterns.invoke({"telemetry_data": telemetry_dicts, "forecast_hours": 24})
     
     return {
         **state,
@@ -373,8 +373,8 @@ def generate_recommendations(state: EnergyOptimizationState):
             "optimization_result": None
         }
     
-    # Calculate optimal shutdown window
-    shutdown_window = calculate_optimal_shutdown(analysis["usage_patterns"])
+    # Calculate optimal shutdown window - invoke it properly
+    shutdown_window = calculate_optimal_shutdown.invoke({"usage_analysis": analysis["usage_patterns"]})
     
     if "error" in shutdown_window:
         return {
@@ -387,12 +387,12 @@ def generate_recommendations(state: EnergyOptimizationState):
         reading.fuel_consumption_lph for reading in state["telemetry_data"]
     ])
     
-    # Calculate savings
-    savings_data = calculate_savings(
-        shutdown_window, 
-        state["fuel_price"], 
-        avg_fuel_consumption
-    )
+    # Calculate savings - invoke it properly
+    savings_data = calculate_savings.invoke({
+        "shutdown_window": shutdown_window,
+        "fuel_price": state["fuel_price"],
+        "avg_fuel_consumption": avg_fuel_consumption
+    })
     
     # Generate natural language recommendation with efficiency and prediction insights
     efficiency_trends = analysis.get("efficiency_trends", {})
