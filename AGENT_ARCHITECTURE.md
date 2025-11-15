@@ -75,11 +75,11 @@ def calculate_savings(shutdown_window: Dict[str, Any], fuel_price: float, avg_fu
 
 ### 3. LLM Integration
 
-We configured OpenAI's GPT-4 model with specific parameters:
+We configured OpenAI's GPT-5 model with specific parameters:
 
 ```python
 llm = ChatOpenAI(
-    model=os.getenv("OPENAI_MODEL", "gpt-4"),
+    model=os.getenv("OPENAI_MODEL", "gpt-5"),
     temperature=0.1
 )
 ```

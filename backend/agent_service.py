@@ -21,7 +21,7 @@ from models import TelemetryReading, OptimizationResult, ShutdownWindow, Savings
 
 # Initialize LLM with retry configuration
 llm = ChatOpenAI(
-    model=os.getenv("OPENAI_MODEL", "gpt-4"),
+    model=os.getenv("OPENAI_MODEL", "gpt-5"),
     temperature=0.1,
     max_retries=3,
     request_timeout=30
